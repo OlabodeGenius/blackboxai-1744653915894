@@ -174,14 +174,9 @@ def create_suspect():
         dob = None
         if data.get('date_of_birth'):
             try:
-                # Try YYYY-MM-DD format first
                 dob = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
             except ValueError:
-                try:
-                    # Try MM/DD/YYYY format
-                    dob = datetime.strptime(data['date_of_birth'], '%m/%d/%Y').date()
-                except ValueError:
-                    return jsonify({'error': 'Invalid date format. Use YYYY-MM-DD or MM/DD/YYYY'}), 400
+                return jsonify({'error': "Invalid date_of_birth format. Please use YYYY-MM-DD."}), 400
 
         suspect = Suspect(
             name=data['name'],
@@ -201,11 +196,22 @@ def create_suspect():
         # Add criminal activities if provided
         if 'activities' in data:
             for activity_data in data['activities']:
+                activity_date = None
+                if activity_data.get('date'):
+                    try:
+                        activity_date = datetime.strptime(activity_data['date'], '%Y-%m-%d').date()
+                    except ValueError:
+                        # This error indicates a problem with activity_data date format,
+                        # which should be YYYY-MM-DD as per existing logic.
+                        # For robustness, we can choose to log this, skip this activity, or return an error.
+                        # Here, we'll make it return an error to be consistent with date_of_birth handling.
+                        return jsonify({'error': f"Invalid date format for activity: {activity_data.get('description', 'N/A')}. Please use YYYY-MM-DD."}), 400
+                
                 activity = CriminalActivity(
                     suspect_id=suspect.id,
                     activity_type=activity_data.get('activity_type'),
                     description=activity_data.get('description'),
-                    date=datetime.strptime(activity_data['date'], '%Y-%m-%d').date() if activity_data.get('date') else None,
+                    date=activity_date,
                     location=activity_data.get('location'),
                     amount_involved=activity_data.get('amount_involved')
                 )
